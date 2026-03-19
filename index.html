@@ -2,56 +2,46 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Scanner Pro</title>
+<title>QR Optimized Scanner</title>
 
 <style>
 body {
   margin: 0;
-  font-family: sans-serif;
-  background: #000;
+  background: black;
   color: white;
   text-align: center;
+  font-family: sans-serif;
 }
 
-/* Camera */
 video {
   width: 100%;
-  height: auto;
 }
 
-/* Scanner frame */
-.scan-box {
+/* مربع المسح */
+.box {
   position: absolute;
   top: 50%;
   left: 50%;
   width: 250px;
   height: 250px;
   transform: translate(-50%, -50%);
-  border: 3px solid #00ff99;
-  border-radius: 15px;
-  box-shadow: 0 0 20px #00ff99;
-  overflow: hidden;
+  border: 2px solid #00ff99;
+  border-radius: 12px;
 }
 
-/* Animated line */
-.scan-line {
+/* خط متحرك */
+.line {
   position: absolute;
   width: 100%;
   height: 3px;
   background: red;
-  animation: move 2s infinite;
+  animation: move 1.5s infinite;
 }
 
 @keyframes move {
   0% { top: 0; }
   50% { top: 100%; }
   100% { top: 0; }
-}
-
-.status {
-  position: absolute;
-  bottom: 20px;
-  width: 100%;
 }
 </style>
 </head>
@@ -60,42 +50,44 @@ video {
 
 <video id="video" autoplay></video>
 
-<div class="scan-box">
-  <div class="scan-line"></div>
+<div class="box">
+  <div class="line"></div>
 </div>
 
-<div class="status" id="status">وجه الكاميرا نحو QR</div>
+<p id="status">توجيه الكاميرا...</p>
 
 <canvas id="canvas" hidden></canvas>
 
 <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
 <script>
+
 const video = document.getElementById("video");
 const status = document.getElementById("status");
 
-let scanned = false;
-
-/* أصوات */
-const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-const errorSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-
-/* تشغيل الكاميرا */
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-.then(stream => {
-  video.srcObject = stream;
-})
-.catch(err => {
-  status.innerText = "فشل تشغيل الكاميرا";
-});
-
-/* Canvas */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-/* فحص QR */
-setInterval(() => {
-  if (video.readyState === video.HAVE_ENOUGH_DATA && !scanned) {
+let scanning = true;
+let lastScanTime = 0;
+
+/* تشغيل الكاميرا */
+navigator.mediaDevices.getUserMedia({
+  video: { facingMode: "environment" }
+})
+.then(stream => {
+  video.srcObject = stream;
+});
+
+/* أصوات */
+const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+
+/* المسح المحسن */
+function scan() {
+
+  if (!scanning) return;
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -103,22 +95,38 @@ setInterval(() => {
     ctx.drawImage(video, 0, 0);
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
     const code = jsQR(imageData.data, canvas.width, canvas.height);
 
     if (code) {
-      scanned = true;
-      status.innerText = "تم قراءة QR ✔";
 
-      successSound.play();
+      const now = Date.now();
 
-      // إرسال وهمي API
-      sendAPI(code.data);
+      // منع التكرار خلال 2 ثانية
+      if (now - lastScanTime > 2000) {
 
+        lastScanTime = now;
+
+        scanning = false;
+
+        status.innerText = "QR تم قراءته ✔";
+        successSound.play();
+
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
+
+        sendAPI(code.data);
+
+        setTimeout(() => scanning = true, 2000);
+      }
     } else {
       status.innerText = "جاري البحث...";
     }
   }
-}, 400);
+
+  requestAnimationFrame(scan);
+}
 
 /* API */
 function sendAPI(data) {
@@ -129,20 +137,16 @@ function sendAPI(data) {
     body: JSON.stringify({ qr: data })
   })
   .then(res => {
-    if (!res.ok) throw new Error("API Error");
-
-    status.innerText = "تم الإرسال بنجاح ✔";
-    successSound.play();
-
-    setTimeout(() => scanned = false, 2000);
+    status.innerText = "تم الإرسال ✔";
   })
   .catch(err => {
     status.innerText = "فشل الإرسال ❌";
-    errorSound.play();
-
-    setTimeout(() => scanned = false, 2000);
   });
 }
+
+/* بدء المسح */
+scan();
+
 </script>
 
 </body>
