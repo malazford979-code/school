@@ -2,15 +2,15 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Optimized Scanner</title>
+<title>Fast QR Scanner</title>
 
 <style>
 body {
   margin: 0;
   background: black;
   color: white;
-  text-align: center;
   font-family: sans-serif;
+  text-align: center;
 }
 
 video {
@@ -22,8 +22,8 @@ video {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 250px;
-  height: 250px;
+  width: 240px;
+  height: 240px;
   transform: translate(-50%, -50%);
   border: 2px solid #00ff99;
   border-radius: 12px;
@@ -35,13 +35,19 @@ video {
   width: 100%;
   height: 3px;
   background: red;
-  animation: move 1.5s infinite;
+  animation: move 1.2s infinite;
 }
 
 @keyframes move {
   0% { top: 0; }
   50% { top: 100%; }
   100% { top: 0; }
+}
+
+#status {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
 }
 </style>
 </head>
@@ -54,7 +60,7 @@ video {
   <div class="line"></div>
 </div>
 
-<p id="status">توجيه الكاميرا...</p>
+<p id="status">وجه الكاميرا نحو QR</p>
 
 <canvas id="canvas" hidden></canvas>
 
@@ -64,12 +70,12 @@ video {
 
 const video = document.getElementById("video");
 const status = document.getElementById("status");
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+let lastResult = null;
+let lastTime = 0;
 let scanning = true;
-let lastScanTime = 0;
 
 /* تشغيل الكاميرا */
 navigator.mediaDevices.getUserMedia({
@@ -79,15 +85,10 @@ navigator.mediaDevices.getUserMedia({
   video.srcObject = stream;
 });
 
-/* أصوات */
-const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+/* المسح السريع */
+function scanQR() {
 
-/* المسح المحسن */
-function scan() {
-
-  if (!scanning) return;
-
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+  if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -95,57 +96,60 @@ function scan() {
     ctx.drawImage(video, 0, 0);
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
     const code = jsQR(imageData.data, canvas.width, canvas.height);
 
     if (code) {
 
       const now = Date.now();
 
-      // منع التكرار خلال 2 ثانية
-      if (now - lastScanTime > 2000) {
+      // منع التكرار لنفس الكود خلال 2 ثانية
+      if (code.data !== lastResult || now - lastTime > 2000) {
 
-        lastScanTime = now;
+        lastResult = code.data;
+        lastTime = now;
 
         scanning = false;
 
-        status.innerText = "QR تم قراءته ✔";
-        successSound.play();
+        status.innerText = "تم القراءة ✔ " + code.data;
 
-        if (navigator.vibrate) {
-          navigator.vibrate(200);
-        }
+        sendToAPI(code.data);
 
-        sendAPI(code.data);
-
-        setTimeout(() => scanning = true, 2000);
+        // إعادة تفعيل المسح بعد 1.5 ثانية
+        setTimeout(() => {
+          scanning = true;
+          status.innerText = "جاهز للمسح مرة أخرى...";
+        }, 1500);
       }
+
     } else {
       status.innerText = "جاري البحث...";
     }
   }
 
-  requestAnimationFrame(scan);
+  requestAnimationFrame(scanQR);
 }
 
 /* API */
-function sendAPI(data) {
+function sendToAPI(data) {
 
   fetch("https://example.com/api/qr", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({ qr: data })
   })
   .then(res => {
+    if (!res.ok) throw new Error("API error");
     status.innerText = "تم الإرسال ✔";
   })
   .catch(err => {
-    status.innerText = "فشل الإرسال ❌";
+    status.innerText = "فشل الإرسال ❌ (سيتم إعادة المحاولة لاحقًا)";
   });
 }
 
-/* بدء المسح */
-scan();
+/* تشغيل المسح */
+scanQR();
 
 </script>
 
