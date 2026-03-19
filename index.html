@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Scanner + API</title>
+</head>
+<body>
+
+<h3>QR Scanner</h3>
+<video id="video" width="300" autoplay></video>
+<canvas id="canvas" hidden></canvas>
+
+<p id="status">جاهز...</p>
+
+<script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const status = document.getElementById("status");
+
+// 1. فتح الكاميرا
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+.then(stream => {
+    video.srcObject = stream;
+})
+.catch(err => {
+    alert("فشل فتح الكاميرا: " + err);
+});
+
+// 2. إعداد canvas
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let scanned = false;
+
+// 3. فحص QR بشكل متكرر
+setInterval(() => {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && !scanned) {
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+        if (code) {
+            scanned = true;
+            status.innerText = "تم قراءة QR: " + code.data;
+
+            sendToAPI(code.data);
+        }
+    }
+}, 500);
+
+// 4. إرسال إلى API
+function sendToAPI(qrData) {
+
+    status.innerText = "جاري الإرسال إلى السيرفر...";
+
+    fetch("https://example.com/api/qr", {   // 👈 غير هذا للرابط الحقيقي
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            qr: qrData,
+            time: new Date().toISOString()
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("API Error");
+        return res.json();
+    })
+    .then(data => {
+        alert("تم الإرسال بنجاح ✅");
+        status.innerText = "تم الحفظ بنجاح";
+        scanned = false;
+    })
+    .catch(err => {
+        alert("فشل إرسال البيانات ❌");
+        status.innerText = "خطأ في API";
+        console.error(err);
+        scanned = false;
+    });
+}
+</script>
+
+</body>
+</html>
