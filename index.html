@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fast QR Scanner</title>
+<title>School QR Scanner</title>
 
 <style>
 body {
@@ -11,13 +11,15 @@ body {
   color: white;
   font-family: sans-serif;
   text-align: center;
+  overflow: hidden;
 }
 
 video {
   width: 100%;
+  height: auto;
 }
 
-/* مربع المسح */
+/* إطار المسح */
 .box {
   position: absolute;
   top: 50%;
@@ -27,6 +29,7 @@ video {
   transform: translate(-50%, -50%);
   border: 2px solid #00ff99;
   border-radius: 12px;
+  box-shadow: 0 0 15px #00ff99;
 }
 
 /* خط متحرك */
@@ -42,6 +45,32 @@ video {
   0% { top: 0; }
   50% { top: 100%; }
   100% { top: 0; }
+}
+
+/* فلاش نجاح/خطأ */
+.flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flash.green {
+  background: rgba(0,255,0,0.3);
+  animation: fade 0.5s;
+}
+
+.flash.red {
+  background: rgba(255,0,0,0.3);
+  animation: fade 0.5s;
+}
+
+@keyframes fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 #status {
@@ -60,6 +89,8 @@ video {
   <div class="line"></div>
 </div>
 
+<div id="flash" class="flash"></div>
+
 <p id="status">وجه الكاميرا نحو QR</p>
 
 <canvas id="canvas" hidden></canvas>
@@ -70,12 +101,18 @@ video {
 
 const video = document.getElementById("video");
 const status = document.getElementById("status");
+const flash = document.getElementById("flash");
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-let lastResult = null;
-let lastTime = 0;
 let scanning = true;
+let lastTime = 0;
+let lastData = "";
+
+/* 🎵 أصوات */
+const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+const errorSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
 /* تشغيل الكاميرا */
 navigator.mediaDevices.getUserMedia({
@@ -85,8 +122,16 @@ navigator.mediaDevices.getUserMedia({
   video.srcObject = stream;
 });
 
-/* المسح السريع */
-function scanQR() {
+/* فلاش الشاشة */
+function flashScreen(color) {
+  flash.className = "flash " + color;
+  setTimeout(() => {
+    flash.className = "flash";
+  }, 500);
+}
+
+/* مسح QR */
+function scan() {
 
   if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
 
@@ -102,19 +147,24 @@ function scanQR() {
 
       const now = Date.now();
 
-      // منع التكرار لنفس الكود خلال 2 ثانية
-      if (code.data !== lastResult || now - lastTime > 2000) {
+      if (code.data !== lastData || now - lastTime > 2000) {
 
-        lastResult = code.data;
+        lastData = code.data;
         lastTime = now;
 
         scanning = false;
 
-        status.innerText = "تم القراءة ✔ " + code.data;
+        status.innerText = "تم قراءة QR ✔";
 
-        sendToAPI(code.data);
+        successSound.play();
+        flashScreen("green");
 
-        // إعادة تفعيل المسح بعد 1.5 ثانية
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+
+        sendAPI(code.data);
+
         setTimeout(() => {
           scanning = true;
           status.innerText = "جاهز للمسح مرة أخرى...";
@@ -126,30 +176,37 @@ function scanQR() {
     }
   }
 
-  requestAnimationFrame(scanQR);
+  requestAnimationFrame(scan);
 }
 
-/* API */
-function sendToAPI(data) {
+/* إرسال API */
+function sendAPI(data) {
 
   fetch("https://example.com/api/qr", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ qr: data })
   })
   .then(res => {
+
     if (!res.ok) throw new Error("API error");
-    status.innerText = "تم الإرسال ✔";
+
+    status.innerText = "تم الحفظ ✔";
+    successSound.play();
+    flashScreen("green");
+
   })
   .catch(err => {
-    status.innerText = "فشل الإرسال ❌ (سيتم إعادة المحاولة لاحقًا)";
+
+    status.innerText = "فشل الإرسال ❌";
+    errorSound.play();
+    flashScreen("red");
+
   });
 }
 
 /* تشغيل المسح */
-scanQR();
+scan();
 
 </script>
 
