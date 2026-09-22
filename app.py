@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 # توكن البوت الخاص بك الثابت والمشغل للمجموعات
-BOT_TOKEN = "8734244240:AAF4LvrGYBhNsQPgykM9M5hdN7NmV9hIod4"
+BOT_TOKEN = ""
 TELEGRAM_API_URL = f"https://telegram.org{BOT_TOKEN}/sendMessage"
 
 @app.route('/proxy', methods=['POST'])
