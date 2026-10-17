@@ -581,7 +581,16 @@ async function saveCardsAsPDF() {
                 mode: ["css", "legacy"]
             }
         };
+        const originalTop = [];
 
+container.querySelectorAll(".card-number").forEach(el => {
+    originalTop.push({
+        el: el,
+        top: el.style.top
+    });
+
+    el.style.top = "-22px";
+});
         await html2pdf()
             .set(options)
             .from(container)
@@ -594,9 +603,13 @@ async function saveCardsAsPDF() {
             "افتح أدوات المطور (F12) وأرسل لي الخطأ الكامل."
         );
     } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-    }
+    originalTop.forEach(item => {
+        item.el.style.top = item.top;
+    });
+
+    button.disabled = false;
+    button.textContent = originalText;
+}
 }
 
 window.onload = function() {
