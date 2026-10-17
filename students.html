@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طباعة بطاقات الطلاب A4 (15 بطاقة)</title>
+<script src="qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script><script src="jquery-3.6.0.min.js"></script>
+<script src="bootstrap.bundle.min.js"></script>
+
+<style>
+@font-face {
+    font-family: "Omar";
+    src: url("fonts/Omar.ttf") format("truetype");
+}
+
+:root{
+  --primary:#234169;
+  --accent:#2E6F95;
+  --soft:#E6F2F8;
+  --gold:#C6A85E;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  background:white;
+  line-height:1.2;
+  font-family:"Omar", sans-serif;
+  margin:0;
+}
+
+/* واجهة اختيار الأرقام */
+.card-generator-controls {
+    background: #f8f9fa;
+    padding: 15px;
+    margin: 20px auto;
+    max-width: 750px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.card-generator-controls .input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.card-generator-controls input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: "Omar", sans-serif;
+    font-size: 14px;
+    text-align: center;
+}
+
+.card-generator-controls input[type="text"] {
+    width: 220px;
+}
+
+.card-generator-controls input[type="number"] {
+    width: 90px;
+}
+
+.card-generator-controls button {
+    padding: 8px 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: "Omar", sans-serif;
+    font-weight: bold;
+}
+
+.card-generator-controls button:hover {
+    background: var(--accent);
+}
+
+.divider {
+    color: #aaa;
+    font-weight: bold;
+    padding: 0 5px;
+}
+
+/* الشبكة الجديدة (15 بطاقة لكل صفحة: 3 أعمدة × 5 صفوف بمقاس 63mm عرض × 42mm ارتفاع لضمان احتواء 15 بطاقة في منتصف الصفحة) */
+.cards-wrapper {
+  display: grid;
+  grid-template-columns: repeat(3, 63mm); 
+  grid-auto-rows: 42mm;                  
+  gap: 3mm;                               
+  justify-content: center;
+  align-content: center;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  box-sizing: border-box;
+  page-break-after: always;
+  break-after: page;
+}
+.small-icon{
+  width: 30px;
+  height: 30px;
+  position: absolute;
+  top: 5%;
+  left: 88%;
+  opacity: 0.6;
+}
+/* ================== الطباعة ================== */
+@page {
+      size: A4;
+      margin: 0;
+}
+
+@media print {
+  html, body {
+    width: 210mm;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-container {
+    width: 210mm;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .cards-wrapper {
+    display: grid;
+    grid-template-columns: repeat(3, 63mm);
+    grid-auto-rows: 42mm;
+    gap: 3mm;
+    justify-content: center;
+    align-content: center;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .card {
+    width: 63mm;
+    height: 42mm;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+.print-container{
+  width: 210mm;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ================== البطاقة بمقاس مقصر ومناسب لـ 15 بطاقة ================== */
+.card{
+  width: 63mm;
+  height: 42mm;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  padding: 2.5mm;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #234169;
+  background: white;
+}
+
+.card::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(
+    160deg,
+    rgba(1,65,105,0.18),
+    rgba(255,255,255,0.25)
+  );
+  z-index: 0;
+}
+
+.card-header,
+.card-content{
+  position: relative;
+  z-index: 1;
+}
+
+.card-header{
+  margin-left: 25px;
+  text-align: center;
+}
+
+.card-header h3{
+  font-size: 15px;
+  margin: 0;
+  color: var(--primary);
+}
+
+.card-header h2{
+  font-size: 12px;
+  margin: 0;
+  color: var(--accent);
+}
+
+.card-content{
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.card-right{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.section{
+  margin-top:12px;
+  font-size: 9px;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(111, 241, 255, 0.1);
+  border: 1px solid rgba(35,65,105,0.15);
+  height: 55px;
+  font-weight: 800;
+}
+.section1{
+  margin-top:2px;
+  font-size: 9px;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(111, 241, 255, 0.1);
+  border: 1px solid rgba(35,65,105,0.15);
+  height: 25px;
+  font-weight: 800;
+}
+.card-left{
+  width: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.card::after{
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gold),
+    transparent
+  );
+  opacity: 0.6;
+}
+
+/* تصغير QR code ليتناسب مع المقاس الجديد المقصر */
+.card-left img, .qr-box canvas, .qr-box img{
+  width: 75px !important;
+  height: 75px !important;
+}
+
+.qr-box {
+  margin-top:2px;
+  margin-left:-6px;
+
+  width: 85px;
+  height: 85px;
+  padding: 3px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+}
+
+.qr-text{
+  font-size: 9px;
+  margin-bottom: 2px;
+  order: -1;
+}
+
+.card-number{
+  position: absolute;
+  left: 3px;
+  top: -22px;
+  font-size: 12px;
+  font-weight: bold;
+  background: linear-gradient(135deg,#2E6F95,#234169);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #f1f5f9;
+    border-top: 1px solid #cbd5e1;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 9999;
+}
+
+.bottom-nav a,
+.bottom-nav button {
+    text-decoration: none;
+    color: #333;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.bottom-nav i {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 3px;
+}
+</style>
+</head>
+<body>
+
+<div class="no-print">
+    <div class="bottom-nav">
+        <a href="javascript:history.back()">
+            <i class="fas fa-arrow-left"></i> رجوع
+        </a>
+        <button onclick="window.print()">
+            <i class="fas fa-print"></i> طباعة
+        </button>
+    </div>
+</div>
+
+<div class="print-container">
+    <div class="no-print card-generator-controls">
+        <div class="input-group">
+            <label>من:</label>
+            <input type="number" id="startNum" value="1" min="1">
+            <label>إلى:</label>
+            <input type="number" id="endNum" value="15" min="1">
+        </div>
+        <button id="download-btn">تحميل البطاقات كـ PDF</button>
+        <span class="divider">أو</span>
+        
+        <div class="input-group">
+            <label>أرقام محددة:</label>
+            <input type="text" id="customNums" placeholder="مثال: 1, 5, 12, 20">
+        </div>
+        
+        <button type="button" onclick="generateCards()">
+          عرض وتوليد البطاقات
+      </button>
+      
+      <button
+          type="button"
+          id="saveCardsPdfBtn"
+          onclick="saveCardsAsPDF()"
+          style="display:none;"
+      >
+          حفظ البطاقات PDF
+      </button>    </div>
+
+    <h2 class="no-print" style="text-align:center;">بطاقات QR الطلاب (15 في الصفحة)</h2>
+    <div class="input-group">
+      <label for="schoolName">اسم المدرسة:</label>
+      <input
+          type="text"
+          id="schoolName"
+          value="الأسوة الحسنة ح1-ح2"
+          placeholder="اكتب اسم المدرسة"
+          oninput="updateSchoolName()"
+      >
+  </div>
+    <!-- حاوية البطاقات المتولدة ديناميكياً -->
+    <div id="cardsContainer"></div>
+</div>
+
+<script>
+  document.getElementById('download-btn').addEventListener('click', function () {
+    // 1. تحديد العنصر الذي يحتوي على البطاقات
+    const element = document.getElementById('cardsContainer');
+    
+    // 2. إعدادات ملف الـ PDF (اختياري لتعديل الجودة والمقاسات)
+    const options = {
+        margin:       10,
+        filename:     'my-cards.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 }, // لزيادة دقة ووضوح النصوص والصور
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } // مقاس A4 عمودي
+    };
+
+    // 3. توليد وتحميل الملف
+    html2pdf().set(options).from(element).save();
+});
+
+  function generateCards() {
+    
+    const container = document.getElementById('cardsContainer');
+    container.innerHTML = "";
+
+    let customInput = document.getElementById('customNums').value.trim();
+    let teachersArray = [];
+
+    // إذا أدخل المستخدم أرقاماً مخصصة مفصولة بفاصلة
+    if (customInput !== "") {
+        let parts = customInput.split(',');
+        parts.forEach(p => {
+            let num = parseInt(p.trim());
+            if (!isNaN(num)) {
+                teachersArray.push(num);
+            }
+        });
+        
+        if (teachersArray.length === 0) {
+            alert("الرجاء إدخال أرقام صحيحة مفصولة بفاصلة في حقل الأرقام المحددة.");
+            return;
+        }
+    } else {
+        // النظام التسلسلي (من - إلى)
+        const start = parseInt(document.getElementById('startNum').value);
+        const end = parseInt(document.getElementById('endNum').value);
+
+        if (isNaN(start) || isNaN(end) || start > end) {
+            alert("الرجاء التأكد من صحة الأرقام (رقم البداية يجب أن يكون أقل من أو يساوي النهاية).");
+            return;
+        }
+
+        for (let i = start; i <= end; i++) {
+            teachersArray.push(i);
+        }
+    }
+    document.getElementById("saveCardsPdfBtn").style.display = "inline-block";
+    // تقسيم المصفوفة إلى مجموعات من 15 بطاقة لكل صفحة A4
+    let chunks = [];
+    for (let i = 0; i < teachersArray.length; i += 15) {
+        chunks.push(teachersArray.slice(i, i + 15));
+    }
+
+    chunks.forEach((chunk, pageIndex) => {
+        let wrapperDiv = document.createElement('div');
+        wrapperDiv.className = "cards-wrapper";
+        
+        if (pageIndex < chunks.length - 1) {
+            wrapperDiv.style.pageBreakAfter = "always";
+            wrapperDiv.style.breakAfter = "page";
+        }
+
+        chunk.forEach(num => {
+            let currentUuid = String(num).padStart(3, '0');
+            let qrCodeText = "S-" + currentUuid;
+            
+            let cardHtml = `
+                <div class="card">
+                    <div class="card-header">
+                      <h3 class="school-name">الأسوة الحسنة ح1-ح2</h3>
+                                              <h2>بطاقة الطالب</h2>
+                        <img class="small-icon" src="1.png" alt="">
+
+                    </div>
+                    <div class="card-content">
+                        <div class="card-right">
+                            <div class="section"><b></b></div>
+                            <div class="section1"><b>بطاقة تفقد الكتروني</b></div>
+                        </div>
+                        <div class="card-left">
+                            <div class="card-number" dir="ltr">${qrCodeText}</div>
+                            <div class="qr-text">امسح هنا</div>
+                            <div class="qr-box" data-qr="${qrCodeText}"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            wrapperDiv.innerHTML += cardHtml;
+        });
+
+        container.appendChild(wrapperDiv);
+    });
+
+    // توليد رموز الـ QR للبطاقات المعروضة بالمقاس المصغر الجديد
+    setTimeout(() => {
+        document.querySelectorAll(".qr-box").forEach(function (box) {
+            box.innerHTML = "";
+            var qrData = box.getAttribute("data-qr");
+            if (qrData && qrData.trim() !== "") {
+                new QRCode(box, {
+                    text: qrData,
+                    width: 75,
+                    height: 75,
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        });
+    }, 50);
+}
+function updateSchoolName() {
+    const input = document.getElementById("schoolName");
+    const schoolName = input.value.trim() || "اسم المدرسة";
+
+    document.querySelectorAll(".school-name").forEach(element => {
+        element.textContent = schoolName;
+    });
+}
+
+async function saveCardsAsPDF() {
+    const container = document.getElementById("cardsContainer");
+    const button = document.getElementById("saveCardsPdfBtn");
+
+    if (!container || !container.querySelector(".card")) {
+        alert("يرجى توليد البطاقات أولاً.");
+        return;
+    }
+
+    if (typeof html2pdf === "undefined") {
+        alert("مكتبة PDF غير محمّلة. تحقق من اتصال الإنترنت.");
+        return;
+    }
+
+    const originalText = button.textContent;
+
+    button.disabled = true;
+    button.textContent = "جارٍ حفظ PDF...";
+
+    try {
+        const options = {
+            margin: 0,
+            filename: "بطاقات-الطلاب.pdf",
+            image: {
+                type: "jpeg",
+                quality: 0.98
+            },
+            html2canvas: {
+                scale: 2,
+                useCORS: false,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                logging: true
+            },
+            jsPDF: {
+                unit: "mm",
+                format: "a4",
+                orientation: "portrait"
+            },
+            pagebreak: {
+                mode: ["css", "legacy"]
+            }
+        };
+
+        await html2pdf()
+            .set(options)
+            .from(container)
+            .save();
+
+    } catch (error) {
+        console.error("خطأ في حفظ البطاقات:", error);
+        alert(
+            "تعذّر حفظ PDF.\n" +
+            "افتح أدوات المطور (F12) وأرسل لي الخطأ الكامل."
+        );
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+}
+
+window.onload = function() {
+    generateCards();
+};
+
+</script>
+
+</body>
+</html>
