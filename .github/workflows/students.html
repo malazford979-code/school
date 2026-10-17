@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طباعة بطاقات الطلاب A4 (15 بطاقة)</title>
 <script src="qrcode.min.js"></script>
-
+<script src="https://cloudflare.com"></script>
 <script src="jquery-3.6.0.min.js"></script>
 <script src="bootstrap.bundle.min.js"></script>
 
@@ -375,7 +375,7 @@ body{
             <label>إلى:</label>
             <input type="number" id="endNum" value="15" min="1">
         </div>
-        
+        <button id="download-btn">تحميل البطاقات كـ PDF</button>
         <span class="divider">أو</span>
         
         <div class="input-group">
@@ -402,6 +402,23 @@ body{
 </div>
 
 <script>
+  document.getElementById('download-btn').addEventListener('click', function () {
+    // 1. تحديد العنصر الذي يحتوي على البطاقات
+    const element = document.getElementById('cardsContainer');
+    
+    // 2. إعدادات ملف الـ PDF (اختياري لتعديل الجودة والمقاسات)
+    const options = {
+        margin:       10,
+        filename:     'my-cards.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 }, // لزيادة دقة ووضوح النصوص والصور
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } // مقاس A4 عمودي
+    };
+
+    // 3. توليد وتحميل الملف
+    html2pdf().set(options).from(element).save();
+});
+
   function generateCards() {
     const container = document.getElementById('cardsContainer');
     container.innerHTML = "";
