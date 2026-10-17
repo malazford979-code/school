@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طباعة بطاقات الطلاب A4 (15 بطاقة)</title>
 <script src="qrcode.min.js"></script>
-<script src="https://cloudflare.com"></script>
-<script src="jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script><script src="jquery-3.6.0.min.js"></script>
 <script src="bootstrap.bundle.min.js"></script>
 
 <style>
@@ -383,8 +382,18 @@ body{
             <input type="text" id="customNums" placeholder="مثال: 1, 5, 12, 20">
         </div>
         
-        <button onclick="generateCards()">عرض وتوليد البطاقات</button>
-    </div>
+        <button type="button" onclick="generateCards()">
+          عرض وتوليد البطاقات
+      </button>
+      
+      <button
+          type="button"
+          id="saveCardsPdfBtn"
+          onclick="saveCardsAsPDF()"
+          style="display:none;"
+      >
+          حفظ البطاقات PDF
+      </button>    </div>
 
     <h2 class="no-print" style="text-align:center;">بطاقات QR الطلاب (15 في الصفحة)</h2>
     <div class="input-group">
@@ -420,6 +429,7 @@ body{
 });
 
   function generateCards() {
+    
     const container = document.getElementById('cardsContainer');
     container.innerHTML = "";
 
@@ -454,7 +464,7 @@ body{
             teachersArray.push(i);
         }
     }
-
+    document.getElementById("saveCardsPdfBtn").style.display = "inline-block";
     // تقسيم المصفوفة إلى مجموعات من 15 بطاقة لكل صفحة A4
     let chunks = [];
     for (let i = 0; i < teachersArray.length; i += 15) {
@@ -525,6 +535,68 @@ function updateSchoolName() {
         element.textContent = schoolName;
     });
 }
+
+async function saveCardsAsPDF() {
+    const container = document.getElementById("cardsContainer");
+    const button = document.getElementById("saveCardsPdfBtn");
+
+    if (!container || !container.querySelector(".card")) {
+        alert("يرجى توليد البطاقات أولاً.");
+        return;
+    }
+
+    if (typeof html2pdf === "undefined") {
+        alert("مكتبة PDF غير محمّلة. تحقق من اتصال الإنترنت.");
+        return;
+    }
+
+    const originalText = button.textContent;
+
+    button.disabled = true;
+    button.textContent = "جارٍ حفظ PDF...";
+
+    try {
+        const options = {
+            margin: 0,
+            filename: "بطاقات-الطلاب.pdf",
+            image: {
+                type: "jpeg",
+                quality: 0.98
+            },
+            html2canvas: {
+                scale: 2,
+                useCORS: false,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                logging: true
+            },
+            jsPDF: {
+                unit: "mm",
+                format: "a4",
+                orientation: "portrait"
+            },
+            pagebreak: {
+                mode: ["css", "legacy"]
+            }
+        };
+
+        await html2pdf()
+            .set(options)
+            .from(container)
+            .save();
+
+    } catch (error) {
+        console.error("خطأ في حفظ البطاقات:", error);
+        alert(
+            "تعذّر حفظ PDF.\n" +
+            "افتح أدوات المطور (F12) وأرسل لي الخطأ الكامل."
+        );
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+}
+
 window.onload = function() {
     generateCards();
 };
